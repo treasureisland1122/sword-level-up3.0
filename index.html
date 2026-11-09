@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>검 강화하기 NBS - 50강</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        arcade: { bg: '#090d16', card: '#131b2e', border: '#1e293b', accent: '#eab308' }
+                    },
+                    fontFamily: { mono: ['Courier New', 'Courier', 'monospace'] },
+                    animation: {
+                        'shake': 'shake 0.4s cubic-bezier(.36,.07,.19,.97) both',
+                        'bounce-short': 'bounceShort 0.4s ease-in-out'
+                    },
+                    keyframes: {
+                        shake: {
+                            '10%, 90%': { transform: 'translate3d(-3px, 0, 0)' },
+                            '20%, 80%': { transform: 'translate3d(5px, 0, 0)' },
+                            '30%, 50%, 70%': { transform: 'translate3d(-7px, 0, 0)' },
+                            '40%, 60%': { transform: 'translate3d(7px, 0, 0)' }
+                        },
+                        bounceShort: {
+                            '0%, 100%': { transform: 'scale(1)' },
+                            '50%': { transform: 'scale(1.08)' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #090d16; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: #eab308; }
+        .canvas-glow { box-shadow: inset 0 0 25px rgba(234, 179, 8, 0.15), 0 0 25px rgba(0, 0, 0, 0.8); }
+        .pixel-button { transition: all 0.08s ease-in-out; box-shadow: 0 4px 0 #0f172a; }
+        .pixel-button:active { transform: translateY(3px); box-shadow: 0 1px 0 #0f172a; }
+        body { user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+    </style>
+</head>
+<body class="bg-arcade-bg text-slate-100 font-sans h-screen w-screen overflow-hidden flex flex-col select-none">
+
+    <!-- Top Header Status -->
+    <header class="bg-slate-950 border-b border-slate-800 shrink-0 h-12 px-3 flex items-center justify-between z-40">
+        <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400 font-bold text-sm">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+            </div>
+            <div>
+                <h1 class="font-black text-amber-400 text-xs sm:text-sm tracking-wider flex items-center gap-1.5">
+                    검 강화하기 <span class="text-[10px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-300 font-mono">NBS 50강</span>
+                    <span id="dev-mode-badge" class="hidden text-[9px] px-1.5 py-0.5 rounded bg-purple-600 text-white font-bold animate-pulse">DEV 100%</span>
+                </h1>
+                <div class="flex items-center gap-2 text-[10px] text-slate-400 leading-none">
+                    <span>모드: <strong id="header-mode-text" class="text-emerald-400">이지</strong></span>
+                    <span>•</span>
+                    <span>최고: <strong id="header-max-level" class="text-amber-400">+0</strong></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button onclick="ui.openDevModal()" class="px-2 py-1 rounded bg-purple-950/80 border border-purple-500/50 hover:bg-purple-900 text-purple-300 text-[10px] font-bold flex items-center gap-1 transition">
+                <i class="fa-solid fa-code text-[10px]"></i> <span>개발자 코드</span>
+            </button>
+            <div class="flex items-center gap-1.5 bg-slate-900 border border-amber-500/40 rounded-full px-2.5 py-0.5 text-xs">
+                <i class="fa-solid fa-coins text-amber-400 animate-pulse text-xs"></i>
+                <span id="gold-display" class="font-mono font-bold text-amber-300 text-xs sm:text-sm">1,000</span>
+                <span class="text-[10px] text-amber-500/80 font-bold">G</span>
+            </div>
+            <button onclick="game.toggleSFX()" class="w-7 h-7 rounded-lg bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-300 flex items-center justify-center text-xs" title="효과음">
+                <i class="fa-solid fa-volume-high" id="sfx-icon"></i>
+            </button>
+            <button onclick="game.toggleBGM()" class="w-7 h-7 rounded-lg bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-300 flex items-center justify-center text-xs" title="BGM">
+                <i class="fa-solid fa-music" id="bgm-icon"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Sub Header Nav Tabs -->
+    <nav class="bg-slate-900/90 border-b border-slate-800 shrink-0 h-9 flex items-center px-2 z-30">
+        <div class="max-w-5xl w-full mx-auto flex justify-around gap-1 text-xs">
+            <button onclick="ui.switchTab('enhance')" id="tab-btn-enhance" class="tab-btn flex-1 py-1 rounded font-bold flex items-center justify-center gap-1 transition bg-amber-500 text-slate-950">
+                <i class="fa-solid fa-hammer"></i> <span>검 강화</span>
+            </button>
+            <button onclick="ui.switchTab('shop')" id="tab-btn-shop" class="tab-btn flex-1 py-1 rounded font-bold flex items-center justify-center gap-1 transition text-slate-400 hover:text-slate-200">
+                <i class="fa-solid fa-store"></i> <span>상점</span>
+            </button>
+            <button onclick="ui.switchTab('codex')" id="tab-btn-codex" class="tab-btn flex-1 py-1 rounded font-bold flex items-center justify-center gap-1 transition text-slate-400 hover:text-slate-200">
+                <i class="fa-solid fa-book-bookmark"></i> <span>도감</span> <span id="codex-badge" class="px-1 text-[9px] bg-amber-500/20 text-amber-300 rounded-full">0/50</span>
+            </button>
+            <button onclick="ui.switchTab('inventory')" id="tab-btn-inventory" class="tab-btn flex-1 py-1 rounded font-bold flex items-center justify-center gap-1 transition text-slate-400 hover:text-slate-200">
+                <i class="fa-solid fa-bag-shopping"></i> <span>인벤</span>
+            </button>
+            <button onclick="ui.switchTab('logs')" id="tab-btn-logs" class="tab-btn flex-1 py-1 rounded font-bold flex items-center justify-center gap-1 transition text-slate-400 hover:text-slate-200">
+                <i class="fa-solid fa-sliders"></i> <span>설정</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Viewport Area -->
+    <main class="flex-1 w-full max-w-5xl mx-auto p-2 overflow-hidden flex flex-col">
+        <!-- TAB 1: ENHANCE MAIN -->
+        <section id="tab-enhance" class="tab-content h-full flex flex-col md:flex-row gap-2 overflow-hidden">
+            <div class="flex-1 flex flex-col min-h-0 bg-slate-950 rounded-xl border border-slate-800 relative overflow-hidden canvas-glow">
+                <canvas id="swordCanvas" class="w-full flex-1 block"></canvas>
+                <div class="absolute top-2 left-2 flex flex-col gap-0.5 pointer-events-none">
+                    <span id="canvas-level-badge" class="px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-xs tracking-wider shadow">+0 목검</span>
+                    <span id="canvas-rarity-badge" class="text-[10px] font-semibold text-slate-400 pl-1">1/50단계 • 일반</span>
+                </div>
+                <div id="enhance-toast" class="absolute bottom-3 inset-x-0 flex justify-center pointer-events-none transition-all duration-300 opacity-0 transform translate-y-3 z-20">
+                    <div id="toast-content" class="px-3 py-1.5 rounded-full font-extrabold text-xs sm:text-sm shadow-2xl border border-white/20">성공!</div>
+                </div>
+            </div>
+
+            <div class="w-full md:w-80 lg:w-96 flex flex-col justify-between gap-2 shrink-0">
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-2.5 flex justify-between items-center gap-2">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-1.5">
+                            <h2 id="sword-name-title" class="text-base sm:text-lg font-black text-amber-400 truncate">+0 목검</h2>
+                            <span id="sword-status-tag" class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold shrink-0">보유중</span>
+                        </div>
+                        <p id="sword-desc" class="text-[11px] text-slate-400 truncate mt-0.5">"연습용으로 흔하게 쓰이는 나무 칼이다."</p>
+                    </div>
+                    <button onclick="game.sellSword()" id="sell-btn" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-amber-600/20 border border-slate-700 text-amber-400 text-xs font-bold transition flex flex-col items-center shrink-0">
+                        <span class="text-[9px] text-slate-400 leading-none">판매가</span>
+                        <span id="sell-price-display" class="font-mono text-xs font-bold text-amber-300">100 G</span>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-1.5">
+                    <div class="bg-slate-900/90 border border-slate-800 rounded-lg p-2 text-center">
+                        <span class="text-[10px] text-slate-400 block"><i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i>성공 확률</span>
+                        <span id="stat-success-rate" class="text-sm sm:text-base font-mono font-black text-emerald-400">100%</span>
+                    </div>
+                    <div class="bg-slate-900/90 border border-slate-800 rounded-lg p-2 text-center">
+                        <span class="text-[10px] text-slate-400 block"><i class="fa-solid fa-skull text-rose-500 mr-1"></i>파괴 확률</span>
+                        <span id="stat-break-rate" class="text-sm sm:text-base font-mono font-black text-rose-400">0%</span>
+                    </div>
+                    <div class="bg-slate-900/90 border border-slate-800 rounded-lg p-2 text-center">
+                        <span class="text-[10px] text-slate-400 block"><i class="fa-solid fa-coins text-amber-400 mr-1"></i>강화 비용</span>
+                        <span id="stat-cost" class="text-sm sm:text-base font-mono font-black text-amber-300">0 G</span>
+                    </div>
+                    <div class="bg-slate-900/90 border border-slate-800 rounded-lg p-2 text-center">
+                        <span class="text-[10px] text-slate-400 block"><i class="fa-solid fa-shield-halved text-cyan-400 mr-1"></i>파괴 방지</span>
+                        <span id="stat-protect-status" class="text-xs font-bold text-slate-500">미적용</span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-2 flex flex-col gap-1.5">
+                    <div class="flex items-center justify-between text-[10px] text-slate-400">
+                        <span class="font-bold text-slate-300 flex items-center gap-1"><i class="fa-solid fa-flask text-cyan-400"></i> 강화 보조 아이템</span>
+                        <span>체크 시 자동 사용</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-1.5 text-xs">
+                        <label class="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-950 border border-slate-800 cursor-pointer hover:border-cyan-500/40">
+                            <input type="checkbox" id="item-toggle-protect" onchange="ui.updateItemToggles()" class="accent-cyan-500 rounded w-3.5 h-3.5">
+                            <div class="flex flex-col">
+                                <span class="font-bold text-[11px] text-slate-200 leading-tight">파괴 방지</span>
+                                <span class="text-[9px] text-slate-400"><strong id="cnt-protect" class="text-cyan-400">0</strong>개</span>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-950 border border-slate-800 cursor-pointer hover:border-emerald-500/40">
+                            <input type="checkbox" id="item-toggle-luck" onchange="ui.updateItemToggles()" class="accent-emerald-500 rounded w-3.5 h-3.5">
+                            <div class="flex flex-col">
+                                <span class="font-bold text-[11px] text-slate-200 leading-tight">확률 증가</span>
+                                <span class="text-[9px] text-slate-400"><strong id="cnt-luck" class="text-emerald-400">0</strong>개</span>
+                            </div>
+                        </label>
+                        <label class="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-950 border border-slate-800 cursor-pointer hover:border-amber-500/40">
+                            <input type="checkbox" id="item-toggle-discount" onchange="ui.updateItemToggles()" class="accent-amber-500 rounded w-3.5 h-3.5">
+                            <div class="flex flex-col">
+                                <span class="font-bold text-[11px] text-slate-200 leading-tight">비용 할인(-30%)</span>
+                                <span class="text-[9px] text-slate-400"><strong id="cnt-discount" class="text-amber-400">0</strong>개</span>
+                            </div>
+                        </label>
+                        <button onclick="game.useWarpTicket()" class="flex items-center justify-between p-1.5 rounded-lg bg-purple-950/40 border border-purple-800/50 hover:bg-purple-900/40 text-left">
+                            <div class="flex flex-col">
+                                <span class="font-bold text-[11px] text-purple-300 leading-tight">워프권 (+3강)</span>
+                                <span class="text-[9px] text-slate-400"><strong id="cnt-warp" class="text-purple-400">0</strong>개</span>
+                            </div>
+                            <span class="px-1.5 py-0.5 bg-purple-600 text-white font-bold rounded text-[9px]">사용</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 shrink-0">
+                    <button id="get-sword-btn" onclick="game.obtainNewSword()" class="hidden flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-base shadow-lg pixel-button flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus-circle"></i> <span>새 목검 받기 (무료)</span>
+                    </button>
+                    <button id="enhance-btn" onclick="game.attemptEnhance()" class="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-lg tracking-wider shadow-lg shadow-amber-500/20 pixel-button flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-fire text-xl"></i><span>강 화 시 도</span><i class="fa-solid fa-fire text-xl"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: SHOP -->
+        <section id="tab-shop" class="tab-content hidden flex-col gap-3 h-full overflow-y-auto pr-1">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex justify-between items-center shrink-0">
+                <div>
+                    <h2 class="text-sm font-bold text-amber-400 flex items-center gap-1.5"><i class="fa-solid fa-store"></i> 강화 보조 상점</h2>
+                    <p class="text-[11px] text-slate-400">골드로 보조 아이템과 특별 주문서를 구매하세요.</p>
+                </div>
+                <div class="text-right">
+                    <span class="text-[10px] text-slate-400">소지 골드</span>
+                    <div id="shop-gold-display" class="text-sm font-mono font-bold text-amber-300">0 G</div>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col justify-between">
+                    <div class="flex items-start gap-2.5">
+                        <div class="w-10 h-10 rounded-lg bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400 text-xl shrink-0"><i class="fa-solid fa-shield-virus"></i></div>
+                        <div>
+                            <h3 class="font-bold text-slate-200 text-xs">파괴 방지권</h3>
+                            <span class="inline-block mt-1 font-mono font-bold text-amber-400 text-xs">가격: 500,000 G</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 mt-3 pt-2 border-t border-slate-800">
+                        <button onclick="game.buyItem('protect', 1)" class="flex-1 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 font-bold text-xs border border-cyan-500/30">1개 구매</button>
+                        <button onclick="game.buyItem('protect', 10)" class="flex-1 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-extrabold text-xs">10개 (500만G)</button>
+                    </div>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col justify-between">
+                    <div class="flex items-start gap-2.5">
+                        <div class="w-10 h-10 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-xl shrink-0"><i class="fa-solid fa-clover"></i></div>
+                        <div>
+                            <h3 class="font-bold text-slate-200 text-xs">강화 확률 증가권</h3>
+                            <span class="inline-block mt-1 font-mono font-bold text-amber-400 text-xs">가격: 250,000 G</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 mt-3 pt-2 border-t border-slate-800">
+                        <button onclick="game.buyItem('luck', 1)" class="flex-1 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-emerald-300 font-bold text-xs border border-emerald-500/30">1개 구매</button>
+                        <button onclick="game.buyItem('luck', 10)" class="flex-1 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-extrabold text-xs">10개 (250만G)</button>
+                    </div>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col justify-between">
+                    <div class="flex items-start gap-2.5">
+                        <div class="w-10 h-10 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 text-xl shrink-0"><i class="fa-solid fa-ticket-simple"></i></div>
+                        <div>
+                            <h3 class="font-bold text-slate-200 text-xs">강화 비용 할인권</h3>
+                            <span class="inline-block mt-1 font-mono font-bold text-amber-400 text-xs">가격: 150,000 G</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 mt-3 pt-2 border-t border-slate-800">
+                        <button onclick="game.buyItem('discount', 1)" class="flex-1 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs border border-amber-500/30">1개 구매</button>
+                        <button onclick="game.buyItem('discount', 10)" class="flex-1 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs">10개 (150만G)</button>
+                    </div>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col justify-between">
+                    <div class="flex items-start gap-2.5">
+                        <div class="w-10 h-10 rounded-lg bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-400 text-xl shrink-0"><i class="fa-solid fa-bolt-lightning"></i></div>
+                        <div>
+                            <h3 class="font-bold text-slate-200 text-xs">워프 주문서 (+3강)</h3>
+                            <span class="inline-block mt-1 font-mono font-bold text-amber-400 text-xs">가격: 10,000,000 G</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 mt-3 pt-2 border-t border-slate-800">
+                        <button onclick="game.buyItem('warp', 1)" class="flex-1 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-purple-300 font-bold text-xs border border-purple-500/30">1개 (1,000만G)</button>
+                        <button onclick="game.buyItem('warp', 10)" class="flex-1 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs">10개 (1억G)</button>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gradient-to-r from-amber-950/40 via-slate-900 to-amber-950/40 border border-amber-500/30 rounded-xl p-3 flex items-center justify-between gap-2 shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <i class="fa-solid fa-sack-dollar text-amber-400 text-2xl"></i>
+                    <div>
+                        <h4 class="font-bold text-xs text-amber-300">비상 골드 지원금</h4>
+                        <p class="text-[10px] text-slate-400">자금이 부족할 때 1,000 G를 즉시 지급받습니다.</p>
+                    </div>
+                </div>
+                <button onclick="game.claimGoldSupport()" class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shrink-0">1,000G 받기</button>
+            </div>
+        </section>
+
+        <!-- TAB 3: CODEX -->
+        <section id="tab-codex" class="tab-content hidden flex-col gap-3 h-full overflow-y-auto pr-1">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex justify-between items-center gap-2 shrink-0">
+                <div>
+                    <h2 class="text-sm font-bold text-amber-400 flex items-center gap-1.5"><i class="fa-solid fa-book-open"></i> 궁극의 검 50종 도감</h2>
+                    <p class="text-[11px] text-slate-400">총 50단계의 모든 검을 수집해 보세요.</p>
+                </div>
+                <div class="w-48">
+                    <div class="flex justify-between text-[11px] mb-1"><span class="text-slate-400">수집률</span><span id="codex-progress-text" class="font-bold text-amber-400">0% (0/50)</span></div>
+                    <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                        <div id="codex-progress-bar" class="h-full bg-amber-500 transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="codex-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2"></div>
+        </section>
+
+        <!-- TAB 4: INVENTORY -->
+        <section id="tab-inventory" class="tab-content hidden flex-col gap-3 h-full overflow-y-auto">
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 shrink-0">
+                <h2 class="text-sm font-bold text-amber-400 flex items-center gap-1.5"><i class="fa-solid fa-bag-shopping"></i> 보유 아이템 인벤토리</h2>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex justify-between items-center">
+                    <div class="flex items-center gap-2.5"><i class="fa-solid fa-shield-virus text-cyan-400 text-xl"></i><div><h3 class="font-bold text-slate-200 text-xs">파괴 방지권</h3></div></div>
+                    <span id="inv-cnt-protect" class="text-lg font-mono font-black text-cyan-400">0개</span>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex justify-between items-center">
+                    <div class="flex items-center gap-2.5"><i class="fa-solid fa-clover text-emerald-400 text-xl"></i><div><h3 class="font-bold text-slate-200 text-xs">강화 확률 증가권</h3></div></div>
+                    <span id="inv-cnt-luck" class="text-lg font-mono font-black text-emerald-400">0개</span>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex justify-between items-center">
+                    <div class="flex items-center gap-2.5"><i class="fa-solid fa-ticket-simple text-amber-400 text-xl"></i><div><h3 class="font-bold text-slate-200 text-xs">강화 비용 할인권</h3></div></div>
+                    <span id="inv-cnt-discount" class="text-lg font-mono font-black text-amber-400">0개</span>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex justify-between items-center">
+                    <div class="flex items-center gap-2.5"><i class="fa-solid fa-bolt-lightning text-purple-400 text-xl"></i><div><h3 class="font-bold text-slate-200 text-xs">워프 주문서 (+3강)</h3></div></div>
+                    <span id="inv-cnt-warp" class="text-lg font-mono font-black text-purple-400">0개</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 5: LOGS & SETTINGS -->
+        <section id="tab-logs" class="tab-content hidden flex-col gap-3 h-full overflow-y-auto">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 flex-1 min-h-0">
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col gap-3">
+                    <h3 class="font-bold text-amber-400 text-xs flex items-center gap-1.5"><i class="fa-solid fa-gear"></i> 모드 & 저장 설정</h3>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <button onclick="game.setMode('easy')" id="mode-btn-easy" class="py-2 px-2 rounded-lg border text-center font-bold">이지 모드<br><span class="text-[9px] font-normal text-slate-400">(성공률+15%)</span></button>
+                        <button onclick="game.setMode('hard')" id="mode-btn-hard" class="py-2 px-2 rounded-lg border text-center font-bold">하드 모드<br><span class="text-[9px] font-normal text-slate-400">(정통 확률)</span></button>
+                    </div>
+                    <div class="flex flex-col gap-1.5 pt-2 border-t border-slate-800">
+                        <button onclick="game.saveToLocalStorage(true)" class="py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> 수동 저장
+                        </button>
+                        <button onclick="game.resetData()" class="py-1.5 rounded-lg bg-rose-950/40 border border-rose-800/50 text-rose-300 font-bold text-xs flex items-center justify-center gap-1.5">
+                            <i class="fa-solid fa-trash-can"></i> 데이터 초기화
+                        </button>
+                    </div>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col gap-2 text-xs">
+                    <h3 class="font-bold text-amber-400 text-xs flex items-center gap-1.5"><i class="fa-solid fa-chart-column"></i> 강화 통계</h3>
+                    <div class="flex justify-between py-1 border-b border-slate-800/60"><span class="text-slate-400">총 시도 횟수</span><span id="stat-total-attempts" class="font-mono font-bold text-slate-200">0회</span></div>
+                    <div class="flex justify-between py-1 border-b border-slate-800/60"><span class="text-slate-400">강화 성공</span><span id="stat-total-successes" class="font-mono font-bold text-emerald-400">0회</span></div>
+                    <div class="flex justify-between py-1 border-b border-slate-800/60"><span class="text-slate-400">강화 실패</span><span id="stat-total-fails" class="font-mono font-bold text-amber-400">0회</span></div>
+                    <div class="flex justify-between py-1 border-b border-slate-800/60"><span class="text-slate-400">파괴된 검</span><span id="stat-total-breaks" class="font-mono font-bold text-rose-400">0개</span></div>
+                    <div class="flex justify-between py-1 border-b border-slate-800/60"><span class="text-slate-400">획득 골드</span><span id="stat-total-earned" class="font-mono font-bold text-amber-300">0 G</span></div>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col gap-2 h-48 md:h-auto">
+                    <h3 class="font-bold text-amber-400 text-xs flex items-center gap-1.5"><i class="fa-solid fa-list-ul"></i> 강화 로그</h3>
+                    <div id="log-list" class="flex-1 overflow-y-auto bg-slate-950 rounded-lg p-2 font-mono text-[11px] flex flex-col gap-1 border border-slate-800"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal: Codex -->
+    <div id="codex-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 rounded-xl max-w-xs w-full p-4 flex flex-col gap-3 shadow-2xl relative">
+            <button onclick="ui.closeModal()" class="absolute top-3 right-3 text-slate-400 hover:text-white text-base"><i class="fa-solid fa-xmark"></i></button>
+            <div class="text-center">
+                <span id="modal-level" class="px-2.5 py-0.5 rounded-full bg-amber-500 text-slate-950 font-black text-xs">+0</span>
+                <h3 id="modal-title" class="text-lg font-black text-amber-400 mt-1.5">검 이름</h3>
+                <p id="modal-desc" class="text-xs text-slate-400 mt-1 italic">설명</p>
+            </div>
+            <div class="bg-slate-950 rounded-lg p-2.5 border border-slate-800 text-xs flex flex-col gap-1.5">
+                <div class="flex justify-between"><span class="text-slate-400">기본 성공률</span><span id="modal-success" class="font-mono text-emerald-400">100%</span></div>
+                <div class="flex justify-between"><span class="text-slate-400">기본 파괴율</span><span id="modal-break" class="font-mono text-rose-400">0%</span></div>
+                <div class="flex justify-between"><span class="text-slate-400">강화 비용</span><span id="modal-cost" class="font-mono text-amber-300">0 G</span></div>
+                <div class="flex justify-between"><span class="text-slate-400">판매 가격</span><span id="modal-sell" class="font-mono text-amber-300">100 G</span></div>
+            </div>
+            <button onclick="ui.closeModal()" class="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-lg text-xs">닫기</button>
+        </div>
+    </div>
+
+    <!-- Modal: Developer Code Entry -->
+    <div id="dev-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+        <div class="bg-slate-900 border border-purple-500/50 rounded-xl max-w-xs w-full p-4 flex flex-col gap-3 shadow-2xl relative">
+            <button onclick="ui.closeDevModal()" class="absolute top-3 right-3 text-slate-400 hover:text-white text-base"><i class="fa-solid fa-xmark"></i></button>
+            <div class="text-center">
+                <div class="w-10 h-10 rounded-full bg-purple-500/20 text-purple-400 mx-auto flex items-center justify-center text-xl mb-1 border border-purple-500/40">
+                    <i class="fa-solid fa-code"></i>
+                </div>
+                <h3 class="text-base font-black text-purple-300">개발자 모드 설정</h3>
+                <p class="text-[11px] text-slate-400 mt-0.5">코드를 입력하여 온/오프하거나 버튼으로 해제하세요.</p>
+            </div>
+            <div class="flex flex-col gap-2">
+                <input type="password" id="dev-code-input" maxlength="4" placeholder="0000" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-center text-lg font-mono tracking-widest text-purple-300 focus:outline-none focus:border-purple-500">
+                <button onclick="game.submitDevCode()" class="w-full py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition">
+                    코드 확인 (ON / OFF)
+                </button>
+                <button id="dev-disable-btn" onclick="game.disableDevMode()" class="hidden w-full py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition">
+                    🔓 개발자 모드 해제 (OFF)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN SCRIPT -->
+    <script>
+        // 50단계 은총 검 이미지 로드
+        const devSwordImage = new Image();
+        devSwordImage.src = 'dd.png';
+
+        const SWORDS_DATA = [
+            { level: 0,  name: "낡은 목검", desc: "연습용으로 흔하게 쓰이는 평범한 나무 칼.", success: 100, break: 0, cost: 0, sell: 100, rarity: "일반", color: "#a78bfa", bladeColor: "#d97706", glowColor: "rgba(217, 119, 6, 0.2)" },
+            { level: 1,  name: "녹슨 철검", desc: "오래되어 녹이 슬어있는 작은 철제 검.", success: 95, break: 0, cost: 500, sell: 2500, rarity: "일반", color: "#94a3b8", bladeColor: "#92400e", glowColor: "rgba(146, 64, 14, 0.2)" },
+            { level: 2,  name: "단련된 강철검", desc: "날카롭고 정교하게 제련된 강철검.", success: 90, break: 0, cost: 1500, sell: 6000, rarity: "일반", color: "#cbd5e1", bladeColor: "#64748b", glowColor: "rgba(100, 116, 139, 0.2)" },
+            { level: 3,  name: "용병의 브로드소드", desc: "실전 전투에서 검증된 묵직한 브로드소드.", success: 85, break: 0, cost: 4000, sell: 15000, rarity: "일반", color: "#e2e8f0", bladeColor: "#94a3b8", glowColor: "rgba(148, 163, 184, 0.3)" },
+            { level: 4,  name: "룬각인 롱소드", desc: "기본 룬이 각인되어 미세한 기운이 감도는 롱소드.", success: 80, break: 5, cost: 10000, sell: 40000, rarity: "고급", color: "#60a5fa", bladeColor: "#3b82f6", glowColor: "rgba(59, 130, 246, 0.4)" },
+            { level: 5,  name: "기사의 미스릴검", desc: "은빛 미스릴 광채로 찬란하게 빛나는 기사의 검.", success: 75, break: 8, cost: 25000, sell: 100000, rarity: "고급", color: "#38bdf8", bladeColor: "#0ea5e9", glowColor: "rgba(14, 165, 233, 0.4)" },
+            { level: 6,  name: "은빛 바스타드소드", desc: "양손과 한손 모두 자유자재로 다루는 명품 검.", success: 70, break: 10, cost: 60000, sell: 250000, rarity: "고급", color: "#818cf8", bladeColor: "#6366f1", glowColor: "rgba(99, 102, 241, 0.4)" },
+            { level: 7,  name: "흑철 클레이모어", desc: "묵직한 파괴력을 지닌 흑철 대검.", success: 65, break: 12, cost: 150000, sell: 600000, rarity: "희귀", color: "#f87171", bladeColor: "#ef4444", glowColor: "rgba(239, 68, 68, 0.5)" },
+            { level: 8,  name: "불꽃의 플람베르주", desc: "물결 모양의 검날에서 화염이 타오르는 검.", success: 60, break: 15, cost: 350000, sell: 1500000, rarity: "희귀", color: "#f97316", bladeColor: "#ea580c", glowColor: "rgba(234, 88, 12, 0.5)" },
+            { level: 9,  name: "빙하의 크리스", desc: "빙하의 한기가 검날 전체를 감싼 웨이브 단검.", success: 55, break: 18, cost: 800000, sell: 3800000, rarity: "희귀", color: "#38bdf8", bladeColor: "#06b6d4", glowColor: "rgba(6, 182, 212, 0.6)" },
+            { level: 10, name: "뇌전의 발뭉", desc: "벼락의 기운이 꿈틀거리는 전설의 명검.", success: 50, break: 20, cost: 2000000, sell: 9500000, rarity: "영웅", color: "#facc15", bladeColor: "#eab308", glowColor: "rgba(234, 179, 8, 0.6)" },
+            { level: 11, name: "암흑의 블레이드", desc: "칠흑 같은 그림자를 머금은 암살자의 블레이드.", success: 45, break: 22, cost: 5000000, sell: 24000000, rarity: "영웅", color: "#c084fc", bladeColor: "#3f3f46", glowColor: "rgba(63, 63, 70, 0.7)" },
+            { level: 12, name: "천사의 성검", desc: "천상의 축복으로 순백의 아우라가 흐르는 검.", success: 40, break: 25, cost: 12000000, sell: 60000000, rarity: "영웅", color: "#fde047", bladeColor: "#facc15", glowColor: "rgba(250, 204, 21, 0.7)" },
+            { level: 13, name: "악마의 사낫", desc: "심연의 수확자가 쥐던 파멸의 낫 검.", success: 35, break: 28, cost: 30000000, sell: 150000000, rarity: "전설", color: "#f43f5e", bladeColor: "#be123c", glowColor: "rgba(190, 18, 60, 0.8)" },
+            { level: 14, name: "용살자의 드래곤 슬레이어", desc: "고대 드래곤의 비늘과 뼈를 꿰뚫는 대검.", success: 30, break: 30, cost: 80000000, sell: 400000000, rarity: "전설", color: "#fb923c", bladeColor: "#c2410c", glowColor: "rgba(194, 65, 12, 0.8)" },
+            { level: 15, name: "환영의 섀도우 블레이드", desc: "분신과 잔상을 남기며 베어내는 섀도우 블레이드.", success: 25, break: 32, cost: 200000000, sell: 1000000000, rarity: "전설", color: "#a855f7", bladeColor: "#7e22ce", glowColor: "rgba(126, 34, 206, 0.8)" },
+            { level: 16, name: "태양의 솔라 소드", desc: "태양의 핵처럼 뜨거운 화염 아우라를 내뿜는 검.", success: 20, break: 35, cost: 500000000, sell: 2800000000, rarity: "신화", color: "#f97316", bladeColor: "#dc2626", glowColor: "rgba(220, 38, 38, 0.85)" },
+            { level: 17, name: "월광의 루나 블레이드", desc: "달빛의 차가운 유선형 아우라가 흐르는 명검.", success: 15, break: 38, cost: 1300000000, sell: 7000000000, rarity: "신화", color: "#38bdf8", bladeColor: "#0284c7", glowColor: "rgba(2, 132, 199, 0.85)" },
+            { level: 18, name: "시공의 템페스트", desc: "시공간 폭풍을 불러일으키는 전뇌검.", success: 12, break: 40, cost: 3500000000, sell: 19000000000, rarity: "신화", color: "#e879f9", bladeColor: "#c084fc", glowColor: "rgba(192, 132, 252, 0.9)" },
+            { level: 19, name: "파멸의 루인소드", desc: "모든 존재하는 방어구를 부수는 파멸의 루인.", success: 10, break: 43, cost: 9000000000, sell: 50000000000, rarity: "신화", color: "#f43f5e", bladeColor: "#881337", glowColor: "rgba(136, 19, 55, 0.9)" },
+            { level: 20, name: "신의 심판 아포칼립스", desc: "종말의 날 신이 내리는 심판의 번개검.", success: 8, break: 45, cost: 25000000000, sell: 130000000000, rarity: "초월", color: "#facc15", bladeColor: "#eab308", glowColor: "rgba(234, 179, 8, 0.95)" },
+            { level: 21, name: "멸망의 엑스칼리버", desc: "차원을 가르고 멸망을 불러오는 초월적 성검.", success: 5, break: 48, cost: 70000000000, sell: 400000000000, rarity: "초월", color: "#38bdf8", bladeColor: "#0369a1", glowColor: "rgba(3, 105, 161, 0.95)" },
+            { level: 22, name: "은하의 갤럭시아", desc: "은하수 성운의 빛 무리가 번쩍이는 은하검.", success: 3, break: 50, cost: 200000000000, sell: 1000000000000, rarity: "초월", color: "#c084fc", bladeColor: "#7e22ce", glowColor: "rgba(126, 34, 206, 1)" },
+            { level: 23, name: "초신성의 스페셜 엣지", desc: "별의 폭발 순간 방출되는 에너지의 결집체.", success: 2, break: 55, cost: 600000000000, sell: 3000000000000, rarity: "신", color: "#f472b6", bladeColor: "#db2777", glowColor: "rgba(219, 39, 119, 1)" },
+            { level: 24, name: "차원의 보이드 소드", desc: "허무의 보이드 공간을 자유자재로 베어내는 검.", success: 1.5, break: 60, cost: 1500000000000, sell: 8000000000000, rarity: "신", color: "#64748b", bladeColor: "#0f172a", glowColor: "rgba(15, 23, 42, 1)" },
+            { level: 25, name: "무한의 인피니티 칼날", desc: "한계가 존재하지 않는 무한 동력의 에너지 칼날.", success: 1.0, break: 65, cost: 3000000000000, sell: 15000000000000, rarity: "신", color: "#22d3ee", bladeColor: "#0891b2", glowColor: "rgba(8, 145, 178, 1)" },
+            { level: 26, name: "불멸의 이모탈 블레이드", desc: "영원히 파괴되지 않는 영혼의 이모탈 블레이드.", success: 0.5, break: 70, cost: 6000000000000, sell: 30000000000000, rarity: "신", color: "#a78bfa", bladeColor: "#7c3aed", glowColor: "rgba(124, 58, 237, 1)" },
+            { level: 27, name: "창세의 제네시스", desc: "새로운 세상을 창조할 수 있는 창세의 신무기.", success: 0.2, break: 72, cost: 10000000000000, sell: 50000000000000, rarity: "NBS 전설", color: "#fb7185", bladeColor: "#e11d48", glowColor: "rgba(225, 29, 72, 1)" },
+            { level: 28, name: "신화의 에테르 소드", desc: "우주의 근원 물질 에테르로 이루어진 최고 신무.", success: 0.1, break: 74, cost: 20000000000000, sell: 100000000000000, rarity: "NBS 전설", color: "#facc15", bladeColor: "#ffffff", glowColor: "rgba(250, 204, 21, 1)" },
+            { level: 29, name: "신들의 전설 넥서스", desc: "마지막 31단계로 향하는 정점의 문지기 검.", success: 0.03, break: 75, cost: 50000000000000, sell: 250000000000000, rarity: "NBS 신화", color: "#38bdf8", bladeColor: "#0ea5e9", glowColor: "rgba(14, 165, 233, 1)" },
+            { level: 30, name: "절대존재 NBS 갓 넥서스", desc: "31단계 강화의 정점.", success: 0.01, break: 75, cost: 100000000000000, sell: 500000000000000, rarity: "NBS GOD", color: "#f59e0b", bladeColor: "#ffffff", glowColor: "rgba(255, 215, 0, 1)" },
+            { level: 31, name: "공허의 포식자 보이드 엣지", desc: "차원의 틈새를 찢고 나온 공허의 검.", success: 0.009, break: 76, cost: 200000000000000, sell: 1000000000000000, rarity: "심연", color: "#171717", bladeColor: "#000000", glowColor: "rgba(0, 0, 0, 0.8)" },
+            { level: 32, name: "심연의 묵시록 아바돈", desc: "모든 빛을 흡수하는 절대적인 어둠의 묵시록.", success: 0.008, break: 77, cost: 400000000000000, sell: 2000000000000000, rarity: "심연", color: "#4c0519", bladeColor: "#220000", glowColor: "rgba(76, 5, 25, 0.9)" },
+            { level: 33, name: "성좌의 인도자 아스트랄", desc: "별빛의 궤적을 베어내는 성좌의 무기.", success: 0.007, break: 78, cost: 800000000000000, sell: 4000000000000000, rarity: "우주", color: "#1d4ed8", bladeColor: "#3b82f6", glowColor: "rgba(59, 130, 246, 0.9)" },
+            { level: 34, name: "은하 붕괴자 퀘이사", desc: "은하 단위의 에너지를 방출하는 퀘이사 블레이드.", success: 0.006, break: 79, cost: 1500000000000000, sell: 7500000000000000, rarity: "우주", color: "#c084fc", bladeColor: "#9333ea", glowColor: "rgba(147, 51, 234, 0.9)" },
+            { level: 35, name: "초신성의 잔해 슈퍼노바", desc: "폭발하는 찰나의 별의 힘을 가둔 초신성 검.", success: 0.005, break: 80, cost: 3000000000000000, sell: 15000000000000000, rarity: "우주", color: "#fb923c", bladeColor: "#f97316", glowColor: "rgba(249, 115, 22, 1)" },
+            { level: 36, name: "특이점의 붕괴 싱귤래리티", desc: "질량과 시간을 붕괴시키는 블랙홀의 특이점.", success: 0.004, break: 82, cost: 6000000000000000, sell: 30000000000000000, rarity: "차원", color: "#0f172a", bladeColor: "#1e293b", glowColor: "rgba(15, 23, 42, 1)" },
+            { level: 37, name: "차원 절단자 디멘션 브레이커", desc: "현실과 허구의 경계를 도려내는 절단기.", success: 0.003, break: 84, cost: 12000000000000000, sell: 60000000000000000, rarity: "차원", color: "#14b8a6", bladeColor: "#0d9488", glowColor: "rgba(13, 148, 136, 1)" },
+            { level: 38, name: "시간의 틈새 크로노스", desc: "과거와 미래를 동시에 베어버리는 시간의 검.", success: 0.002, break: 86, cost: 25000000000000000, sell: 125000000000000000, rarity: "태초", color: "#d97706", bladeColor: "#b45309", glowColor: "rgba(180, 83, 9, 1)" },
+            { level: 39, name: "태초의 숨결 에오스", desc: "우주가 태동하던 첫 번째 숨결을 담은 칼날.", success: 0.001, break: 88, cost: 50000000000000000, sell: 250000000000000000, rarity: "태초", color: "#ec4899", bladeColor: "#be185d", glowColor: "rgba(190, 24, 93, 1)" },
+            { level: 40, name: "우주의 섭리 코스믹 로우", desc: "만물의 법칙 그 자체를 물리적인 형태로 구현한 검.", success: 0.0009, break: 90, cost: 100000000000000000, sell: 500000000000000000, rarity: "개념", color: "#8b5cf6", bladeColor: "#6d28d9", glowColor: "rgba(109, 40, 217, 1)" },
+            { level: 41, name: "혼돈의 도가니 카오스", desc: "질서를 거부하는 무질서의 궁극적 형태.", success: 0.0008, break: 91, cost: 200000000000000000, sell: 1000000000000000000, rarity: "개념", color: "#9f1239", bladeColor: "#e11d48", glowColor: "rgba(225, 29, 72, 1)" },
+            { level: 42, name: "만물의 이치 아카식 레코드", desc: "세상의 모든 지식과 기록이 검신에 새겨진 무기.", success: 0.0007, break: 92, cost: 400000000000000000, sell: 2000000000000000000, rarity: "개념", color: "#38bdf8", bladeColor: "#0284c7", glowColor: "rgba(2, 132, 199, 1)" },
+            { level: 43, name: "창조신의 권능 데미우르고스", desc: "신이 세상을 조각할 때 사용했다는 창조의 도구.", success: 0.0006, break: 93, cost: 800000000000000000, sell: 4000000000000000000, rarity: "신격", color: "#fef08a", bladeColor: "#eab308", glowColor: "rgba(234, 179, 8, 1)" },
+            { level: 44, name: "운명의 실타래 클로토", desc: "존재하는 모든 것의 운명을 끊어버릴 수 있는 명검.", success: 0.0005, break: 94, cost: 1600000000000000000, sell: 8000000000000000000, rarity: "신격", color: "#a78bfa", bladeColor: "#ffffff", glowColor: "rgba(167, 139, 250, 1)" },
+            { level: 45, name: "세계수의 정수 유그드라실", desc: "차원을 지탱하는 우주수의 코어로 벼려낸 기적.", success: 0.0004, break: 95, cost: 3200000000000000000, sell: 16000000000000000000, rarity: "신격", color: "#4ade80", bladeColor: "#16a34a", glowColor: "rgba(22, 163, 74, 1)" },
+            { level: 46, name: "진리의 문 아인 소프", desc: "무한이자 무(無), 도달할 수 없는 진리의 현현.", success: 0.0003, break: 96, cost: 6400000000000000000, sell: 32000000000000000000, rarity: "진리", color: "#ffffff", bladeColor: "#9ca3af", glowColor: "rgba(255, 255, 255, 1)" },
+            { level: 47, name: "글리치: MissingNo. 0x00F", desc: "시스템의 한계를 벗어나 코드가 깨져버린 규격 외의 버그.", success: 0.0002, break: 97, cost: 12800000000000000000, sell: 64000000000000000000, rarity: "ERROR", color: "#10b981", bladeColor: "#000000", glowColor: "rgba(16, 185, 129, 1)" },
+            { level: 48, name: "시스템 지배자 매트릭스 룰러", desc: "게임의 법칙 자체를 프로그래밍하는 창조자의 콘솔.", success: 0.0001, break: 98, cost: 25600000000000000000, sell: 128000000000000000000, rarity: "OVERRIDE", color: "#34d399", bladeColor: "#059669", glowColor: "rgba(52, 211, 153, 1)" },
+            { level: 49, name: "전강민의 은총", desc: "전강민의 신성한 은총이 깃든 궁극의 최강 푸른 신검.", success: 0, break: 0, cost: 0, sell: 999999999999999, rarity: "THE FINAL 50강", color: "#00dfff", bladeColor: "#38bdf8", glowColor: "rgba(0, 223, 255, 0.9)" }
+        ];
+
+        class AudioSynth {
+            constructor() { this.ctx = null; this.sfxEnabled = true; this.bgmEnabled = false; this.bgmInterval = null; this.bgmStep = 0; }
+            init() {
+                if (!this.ctx) { const AudioContext = window.AudioContext || window.webkitAudioContext; if (AudioContext) this.ctx = new AudioContext(); }
+                if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+            }
+            playClick() {
+                if (!this.sfxEnabled) return; this.init(); if (!this.ctx) return;
+                const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(440, this.ctx.currentTime); osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.05);
+                gain.gain.setValueAtTime(0.12, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.05);
+                osc.connect(gain); gain.connect(this.ctx.destination); osc.start(); osc.stop(this.ctx.currentTime + 0.05);
+            }
+            playSuccess() {
+                if (!this.sfxEnabled) return; this.init(); if (!this.ctx) return;
+                [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.05);
+                    gain.gain.setValueAtTime(0, this.ctx.currentTime + idx * 0.05); gain.gain.linearRampToValueAtTime(0.18, this.ctx.currentTime + idx * 0.05 + 0.02); gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + idx * 0.05 + 0.2);
+                    osc.connect(gain); gain.connect(this.ctx.destination); osc.start(this.ctx.currentTime + idx * 0.05); osc.stop(this.ctx.currentTime + idx * 0.05 + 0.2);
+                });
+            }
+            playFail() {
+                if (!this.sfxEnabled) return; this.init(); if (!this.ctx) return;
+                [392.00, 311.13, 261.63].forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.08);
+                    gain.gain.setValueAtTime(0.12, this.ctx.currentTime + idx * 0.08); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.08 + 0.12);
+                    osc.connect(gain); gain.connect(this.ctx.destination); osc.start(this.ctx.currentTime + idx * 0.08); osc.stop(this.ctx.currentTime + idx * 0.08 + 0.12);
+                });
+            }
+            playBreak() {
+                if (!this.sfxEnabled) return; this.init(); if (!this.ctx) return;
+                const bufferSize = this.ctx.sampleRate * 0.35; const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate); const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+                const noise = this.ctx.createBufferSource(); noise.buffer = buffer; const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass'; filter.frequency.setValueAtTime(1000, this.ctx.currentTime); filter.frequency.linearRampToValueAtTime(80, this.ctx.currentTime + 0.35);
+                const gain = this.ctx.createGain(); gain.gain.setValueAtTime(0.35, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.35);
+                noise.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination); noise.start();
+            }
+            playShop() {
+                if (!this.sfxEnabled) return; this.init(); if (!this.ctx) return;
+                [987.77, 1318.51].forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+                    osc.type = 'square'; osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.07);
+                    gain.gain.setValueAtTime(0.08, this.ctx.currentTime + idx * 0.07); gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.07 + 0.12);
+                    osc.connect(gain); gain.connect(this.ctx.destination); osc.start(this.ctx.currentTime + idx * 0.07); osc.stop(this.ctx.currentTime + idx * 0.07 + 0.12);
+                });
+            }
+            toggleBGM() {
+                this.bgmEnabled = !this.bgmEnabled;
+                if (this.bgmEnabled) this.startBGM(); else this.stopBGM();
+                return this.bgmEnabled;
+            }
+            startBGM() {
+                this.stopBGM(); this.init();
+                const bgmNotes = [261.63, 329.63, 392.00, 523.25, 392.00, 329.63, 293.66, 349.23];
+                this.bgmStep = 0;
+                this.bgmInterval = setInterval(() => {
+                    if (!this.bgmEnabled || !this.ctx) return;
+                    const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain();
+                    osc.type = 'triangle'; osc.frequency.setValueAtTime(bgmNotes[this.bgmStep % bgmNotes.length], this.ctx.currentTime);
+                    gain.gain.setValueAtTime(0.03, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.004, this.ctx.currentTime + 0.2);
+                    osc.connect(gain); gain.connect(this.ctx.destination); osc.start(); osc.stop(this.ctx.currentTime + 0.2);
+                    this.bgmStep++;
+                }, 220);
+            }
+            stopBGM() { if (this.bgmInterval) { clearInterval(this.bgmInterval); this.bgmInterval = null; } }
+        }
+        const audio = new AudioSynth();
+
+        class CanvasRenderer {
+            constructor() {
+                this.canvas = document.getElementById('swordCanvas'); this.ctx = this.canvas.getContext('2d');
+                this.particles = []; this.animFrame = null; this.shatterFragments = []; this.isShattered = false; this.glowDegree = 0;
+                this.resize(); window.addEventListener('resize', () => this.resize());
+            }
+            resize() { const parent = this.canvas.parentElement; if (parent) { this.canvas.width = parent.clientWidth; this.canvas.height = parent.clientHeight; } }
+            startAnimationLoop() {
+                const loop = () => { this.update(); this.draw(); this.animFrame = requestAnimationFrame(loop); };
+                if (this.animFrame) cancelAnimationFrame(this.animFrame); loop();
+            }
+            triggerShatter() {
+                this.isShattered = true; this.shatterFragments = []; const cx = this.canvas.width / 2; const cy = this.canvas.height / 2;
+                for (let i = 0; i < 40; i++) {
+                    this.shatterFragments.push({ x: cx + (Math.random() - 0.5) * 40, y: cy + (Math.random() - 0.5) * 100, vx: (Math.random() - 0.5) * 14, vy: (Math.random() - 0.7) * 12, size: Math.random() * 8 + 3, color: game.currentSword ? game.currentSword.bladeColor : '#cbd5e1', rot: Math.random() * Math.PI * 2, vRot: (Math.random() - 0.5) * 0.3, life: 1.0 });
+                }
+            }
+            triggerSuccessBurst() {
+                const cx = this.canvas.width / 2; const cy = this.canvas.height / 2;
+                for (let i = 0; i < 55; i++) {
+                    const angle = Math.random() * Math.PI * 2; const speed = Math.random() * 7 + 2;
+                    this.particles.push({ x: cx, y: cy, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, size: Math.random() * 5 + 2, color: ['#00dfff', '#38bdf8', '#ffffff', '#facc15', '#e879f9'][Math.floor(Math.random() * 5)], life: 1.0, decay: Math.random() * 0.03 + 0.015 });
+                }
+            }
+            update() {
+                this.glowDegree += 0.04;
+                if (game && game.currentSword && !this.isShattered) {
+                    const lvl = game.currentSword.level; const maxP = Math.min(lvl * 2 + 3, 60);
+                    if (this.particles.length < maxP) {
+                        const cx = this.canvas.width / 2; const cy = this.canvas.height / 2;
+                        this.particles.push({ x: cx + (Math.random() - 0.5) * 50, y: cy + (Math.random() - 0.5) * 120, vx: (Math.random() - 0.5) * (1 + lvl * 0.1), vy: -Math.random() * (1 + lvl * 0.12) - 0.5, size: Math.random() * (2 + lvl * 0.15) + 1, color: lvl >= 49 ? '#00dfff' : game.currentSword.color, life: 1.0, decay: Math.random() * 0.02 + 0.01 });
+                    }
+                }
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i]; p.x += p.vx; p.y += p.vy; p.life -= p.decay;
+                    if (p.life <= 0) this.particles.splice(i, 1);
+                }
+                if (this.isShattered) {
+                    for (let i = this.shatterFragments.length - 1; i >= 0; i--) {
+                        const f = this.shatterFragments[i]; f.x += f.vx; f.y += f.vy; f.vy += 0.35; f.rot += f.vRot; f.life -= 0.025;
+                        if (f.life <= 0) this.shatterFragments.splice(i, 1);
+                    }
+                }
+            }
+            draw() {
+                const ctx = this.ctx; const w = this.canvas.width; const h = this.canvas.height; const cx = w / 2; const cy = h / 2;
+                ctx.clearRect(0, 0, w, h);
+                const sword = game ? game.currentSword : null; const glowColor = sword ? sword.glowColor : 'rgba(234, 179, 8, 0.1)';
+                const grad = ctx.createRadialGradient(cx, cy, 10, cx, cy, Math.max(w, h) / 1.4);
+                grad.addColorStop(0, glowColor); grad.addColorStop(1, 'rgba(9, 13, 22, 0)');
+                ctx.fillStyle = grad; ctx.fillRect(0, 0, w, h);
+
+                if (sword && !this.isShattered) {
+                    ctx.save(); ctx.translate(cx, cy); const floatY = Math.sin(this.glowDegree * 2) * 5; ctx.translate(0, floatY);
+                    if (sword.level > 2) { ctx.shadowColor = sword.level >= 49 ? '#00dfff' : sword.color; ctx.shadowBlur = 8 + Math.min(sword.level * 1.2, 40); }
+                    
+                    // 50단계(level 49) 전강민의 은총인 경우 dd.png 이미지 렌더링
+                    if (sword.level === 49 && devSwordImage.complete && devSwordImage.naturalWidth !== 0) {
+                        const imgSize = Math.min(w, h) * 0.65;
+                        ctx.drawImage(devSwordImage, -imgSize / 2, -imgSize / 2, imgSize, imgSize);
+                    } else {
+                        // 1~49단계 기본 검 렌더링
+                        const bladeLength = Math.min(100 + sword.level * 2.5, h * 0.45); const bladeWidth = Math.min(14 + sword.level * 0.7, 30); const hiltWidth = bladeWidth + 20;
+                        
+                        const bladeGrad = ctx.createLinearGradient(-bladeWidth / 2, 0, bladeWidth / 2, 0);
+                        bladeGrad.addColorStop(0, sword.bladeColor); bladeGrad.addColorStop(0.5, '#ffffff'); bladeGrad.addColorStop(1, sword.bladeColor);
+                        ctx.fillStyle = bladeGrad; ctx.beginPath(); ctx.moveTo(-bladeWidth / 2, 15); ctx.lineTo(-bladeWidth / 2, -bladeLength + 20); ctx.lineTo(0, -bladeLength); ctx.lineTo(bladeWidth / 2, -bladeLength + 20); ctx.lineTo(bladeWidth / 2, 15); ctx.closePath(); ctx.fill(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
+                        
+                        ctx.beginPath(); ctx.moveTo(0, 15); ctx.lineTo(0, -bladeLength + 8); ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.5; ctx.stroke();
+                        ctx.fillStyle = '#334155'; ctx.fillRect(-hiltWidth / 2, 15, hiltWidth, 10); ctx.strokeStyle = sword.color; ctx.lineWidth = 1.5; ctx.strokeRect(-hiltWidth / 2, 15, hiltWidth, 10);
+                        
+                        if (sword.level >= 5) { ctx.fillStyle = sword.color; ctx.beginPath(); ctx.arc(0, 20, 4, 0, Math.PI * 2); ctx.fill(); }
+                        ctx.fillStyle = '#1e293b'; ctx.fillRect(-5, 25, 10, 28);
+                        ctx.strokeStyle = '#64748b'; ctx.lineWidth = 1;
+                        for (let y = 28; y < 50; y += 5) { ctx.beginPath(); ctx.moveTo(-5, y); ctx.lineTo(5, y + 2); ctx.stroke(); }
+                        ctx.fillStyle = sword.color; ctx.beginPath(); ctx.arc(0, 56, 6, 0, Math.PI * 2); ctx.fill();
+                    }
+                    ctx.restore();
+                }
+
+                for (let p of this.particles) {
+                    ctx.save(); ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = 4;
+                    ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+                }
+
+                if (this.isShattered) {
+                    for (let f of this.shatterFragments) {
+                        ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.rot); ctx.globalAlpha = Math.max(0, f.life); ctx.fillStyle = f.color; ctx.fillRect(-f.size / 2, -f.size / 2, f.size, f.size); ctx.restore();
+                    }
+                }
+            }
+        }
+
+        class GameEngine {
+            constructor() {
+                this.mode = 'easy'; this.isDevMode = false; this.gold = 1000; this.currentLevel = 0; this.maxLevelReached = 0;
+                this.items = { protect: 0, luck: 0, discount: 0, warp: 0 }; this.toggles = { protect: false, luck: false, discount: false };
+                this.codexUnlocked = new Array(50).fill(false); this.codexUnlocked[0] = true;
+                this.stats = { totalAttempts: 0, totalSuccesses: 0, totalFails: 0, totalBreaks: 0, totalEarned: 0 }; this.logs = [];
+            }
+            init() {
+                this.loadFromLocalStorage();
+                renderer.startAnimationLoop();
+                ui.updateAll();
+                this.addLog("game", "게임 시작! 원클릭 연속 강화.");
+            }
+            get currentSword() { if (this.currentLevel === null) return null; return SWORDS_DATA[this.currentLevel]; }
+            
+            getCalculatedSuccessRate() {
+                if (!this.currentSword) return 0;
+                if (this.isDevMode) return 100;
+                let rate = this.currentSword.success;
+                if (this.currentLevel >= 49) return 0;
+                if (this.currentLevel >= 29) {
+                    if (this.mode === 'easy') rate *= 1.5;
+                    if (this.toggles.luck && this.items.luck > 0) rate *= 1.5;
+                    return parseFloat(rate.toFixed(5));
+                } else {
+                    if (this.mode === 'easy') rate += 15;
+                    if (this.toggles.luck && this.items.luck > 0) rate += 10;
+                    return Math.min(100, Math.max(0, parseFloat(rate.toFixed(2))));
+                }
+            }
+            getCalculatedBreakRate() {
+                if (!this.currentSword) return 0;
+                if (this.isDevMode) return 0;
+                if (this.toggles.protect && this.items.protect > 0) return 0;
+                let rate = this.currentSword.break;
+                if (this.mode === 'easy') rate = Math.floor(rate * 0.5);
+                return Math.min(100, Math.max(0, rate));
+            }
+            getCalculatedCost() {
+                if (!this.currentSword) return 0;
+                if (this.isDevMode) return 0;
+                let cost = this.currentSword.cost;
+                if (this.toggles.discount && this.items.discount > 0) cost = Math.floor(cost * 0.7);
+                return cost;
+            }
+
+            submitDevCode() {
+                const code = document.getElementById('dev-code-input').value;
+                if (code === '0619') {
+                    if (this.isDevMode) {
+                        this.disableDevMode();
+                    } else {
+                        this.isDevMode = true;
+                        this.gold = 999999999999999;
+                        this.items = { protect: 999, luck: 999, discount: 999, warp: 999 };
+                        audio.playSuccess();
+                        ui.closeDevModal();
+                        ui.showToast("🔓 개발자 모드 활성화 (100% 성공 & 무제한 지원)", "success");
+                        this.addLog("success", "개발자 코드(0619) 입력됨: 치트 모드 ON");
+                        this.saveToLocalStorage();
+                        ui.updateAll();
+                    }
+                } else {
+                    audio.playFail();
+                    ui.showToast("❌ 올바르지 않은 코드입니다.", "fail");
+                }
+            }
+
+            disableDevMode() {
+                this.isDevMode = false;
+                if (this.gold >= 999999999999) {
+                    this.gold = 10000; // 해제 시 일반 골드로 재조정
+                }
+                audio.playClick();
+                ui.closeDevModal();
+                ui.showToast("🔒 개발자 모드가 해제되었습니다.", "info");
+                this.addLog("info", "개발자 모드 OFF");
+                this.saveToLocalStorage();
+                ui.updateAll();
+            }
+
+            attemptEnhance() {
+                audio.playClick();
+                if (this.currentLevel === null) { ui.showToast("새 목검을 먼저 획득하세요!", "fail"); return; }
+                if (this.currentLevel >= 49) { ui.showToast("이미 최고 단계에 도달했습니다!", "success"); return; }
+                const cost = this.getCalculatedCost();
+                if (this.gold < cost) { ui.showToast("골드가 부족합니다!", "fail"); return; }
+
+                this.gold -= cost; this.stats.totalAttempts++;
+                let usedProtect = false;
+                if (this.toggles.protect && this.items.protect > 0 && !this.isDevMode) { this.items.protect--; usedProtect = true; }
+                if (this.toggles.luck && this.items.luck > 0 && !this.isDevMode) { this.items.luck--; }
+                if (this.toggles.discount && this.items.discount > 0 && !this.isDevMode) { this.items.discount--; }
+
+                const successRate = this.getCalculatedSuccessRate();
+                const roll = Math.random() * 100;
+                renderer.isShattered = false;
+
+                if (roll < successRate || this.isDevMode) {
+                    this.currentLevel++;
+                    if (this.currentLevel > this.maxLevelReached) this.maxLevelReached = this.currentLevel;
+                    this.codexUnlocked[this.currentLevel] = true;
+                    this.stats.totalSuccesses++;
+                    audio.playSuccess(); renderer.triggerSuccessBurst(); ui.triggerBounceAnimation();
+                    if (this.currentLevel === 49) { ui.showToast(`🎉 50강 전강민의 은총 도달!`, "success"); this.addLog("success", `★최고 단계★ 50강 전강민의 은총 성공!`); } 
+                    else { ui.showToast(`✨ 성공! +${this.currentLevel} ${this.currentSword.name}`, "success"); this.addLog("success", `+${this.currentLevel} ${this.currentSword.name} 성공!`); }
+                } else {
+                    const breakRate = this.getCalculatedBreakRate();
+                    const breakRoll = Math.random() * 100;
+                    if (breakRoll < breakRate && !usedProtect) {
+                        const brokenLvl = this.currentLevel; this.currentLevel = null; this.stats.totalBreaks++;
+                        audio.playBreak(); renderer.triggerShatter(); ui.triggerShakeAnimation();
+                        ui.showToast(`💥 파괴! +${brokenLvl} 검이 산산조각 났습니다.`, "break"); this.addLog("break", `+${brokenLvl} 검 파괴됨.`);
+                    } else {
+                        this.stats.totalFails++; audio.playFail(); ui.triggerShakeAnimation();
+                        if (usedProtect) { ui.showToast(`🛡️ 실패! 파괴 방지권 보호.`, "fail"); this.addLog("fail", `실패 (파괴 방지 작동)`); } 
+                        else {
+                            if (this.currentLevel > 5) { this.currentLevel = Math.max(0, this.currentLevel - 1); ui.showToast(`⚠️ 실패! 수치 하강.`, "fail"); this.addLog("fail", `수치 하강: +${this.currentLevel}`); } 
+                            else { ui.showToast(`⚠️ 실패! 수치 유지.`, "fail"); this.addLog("fail", `실패 (유지)`); }
+                        }
+                    }
+                }
+                this.saveToLocalStorage();
+                ui.updateAll();
+            }
+
+            sellSword() {
+                if (this.currentLevel === null) return;
+                audio.playShop();
+                const sword = this.currentSword; let sellPrice = sword.sell;
+                if (this.mode === 'easy') sellPrice = Math.floor(sellPrice * 1.5);
+                this.gold += sellPrice; this.stats.totalEarned += sellPrice;
+                this.addLog("sell", `+${sword.level} ${sword.name} 판매 (+${sellPrice.toLocaleString()} G)`);
+                this.currentLevel = 0; renderer.isShattered = false;
+                ui.showToast(`💰 ${sellPrice.toLocaleString()} G 획득! 새 목검 지급`, "success");
+                this.saveToLocalStorage(); ui.updateAll();
+            }
+            obtainNewSword() {
+                audio.playClick(); this.currentLevel = 0; renderer.isShattered = false;
+                ui.showToast("🗡️ 새 목검을 지급받았습니다.", "success"); this.addLog("info", "새 목검 지급받음");
+                this.saveToLocalStorage(); ui.updateAll();
+            }
+            useWarpTicket() {
+                if (this.items.warp <= 0 && !this.isDevMode) { ui.showToast("워프 주문서가 없습니다.", "fail"); return; }
+                if (this.currentLevel === null) { ui.showToast("먼저 목검을 획득하세요!", "fail"); return; }
+                if (this.currentLevel >= 49) { ui.showToast("이미 최고 단계입니다.", "fail"); return; }
+                audio.playSuccess(); 
+                if (!this.isDevMode) this.items.warp--;
+                this.currentLevel = Math.min(49, this.currentLevel + 3);
+                if (this.currentLevel > this.maxLevelReached) this.maxLevelReached = this.currentLevel;
+                this.codexUnlocked[this.currentLevel] = true; renderer.isShattered = false; renderer.triggerSuccessBurst();
+                ui.showToast(`🌀 워프 성공! +${this.currentLevel} 진입!`, "success"); this.addLog("info", `워프 사용: +${this.currentLevel}`);
+                this.saveToLocalStorage(); ui.updateAll();
+            }
+            buyItem(itemKey, count) {
+                audio.playClick();
+                const prices = { protect: 500000, luck: 250000, discount: 150000, warp: 10000000 };
+                const totalCost = prices[itemKey] * count;
+                if (this.gold < totalCost && !this.isDevMode) { ui.showToast("골드가 부족합니다.", "fail"); return; }
+                if (!this.isDevMode) this.gold -= totalCost; 
+                this.items[itemKey] += count;
+                audio.playShop(); ui.showToast(`아이템 구매 완료!`, "success");
+                this.saveToLocalStorage(); ui.updateAll();
+            }
+            claimGoldSupport() {
+                audio.playClick(); this.gold += 1000; this.stats.totalEarned += 1000;
+                ui.showToast("지원금 1,000 G 획득!", "success");
+                this.saveToLocalStorage(); ui.updateAll();
+            }
+            setMode(m) {
+                audio.playClick(); this.mode = m;
+                ui.showToast(`모드: ${m === 'easy' ? '이지' : '하드'}`, "info");
+                this.saveToLocalStorage(); ui.updateAll();
+            }
+            resetData() {
+                if (window.confirm("모든 데이터를 초기화하시겠습니까?")) {
+                    localStorage.removeItem('nbs_sword_save_local'); location.reload();
+                }
+            }
+            saveToLocalStorage(manual = false) {
+                try {
+                    const saveObj = {
+                        gold: this.gold, currentLevel: this.currentLevel, maxLevelReached: this.maxLevelReached,
+                        mode: this.mode, items: this.items, codexUnlocked: this.codexUnlocked, stats: this.stats, logs: this.logs,
+                        isDevMode: this.isDevMode
+                    };
+                    localStorage.setItem('nbs_sword_save_local', JSON.stringify(saveObj));
+                    if (manual) ui.showToast("저장 완료!", "success");
+                } catch (e) { console.error(e); }
+            }
+            loadFromLocalStorage() {
+                try {
+                    const raw = localStorage.getItem('nbs_sword_save_local');
+                    if (raw) {
+                        const data = JSON.parse(raw);
+                        this.gold = data.gold ?? 1000; this.currentLevel = data.currentLevel ?? 0; this.maxLevelReached = data.maxLevelReached ?? 0; this.mode = data.mode ?? 'easy';
+                        if (data.items) this.items = { ...this.items, ...data.items };
+                        if (data.codexUnlocked) this.codexUnlocked = data.codexUnlocked;
+                        if (data.stats) this.stats = { ...this.stats, ...data.stats };
+                        if (data.logs) this.logs = data.logs;
+                        this.isDevMode = data.isDevMode ?? false;
+                    }
+                } catch (e) { console.error(e); }
+            }
+            addLog(type, message) {
+                const now = new Date();
+                const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+                this.logs.unshift({ time: timeStr, type, message });
+                if (this.logs.length > 50) this.logs.pop();
+            }
+        }
+
+        class UIManager {
+            constructor() { this.activeTab = 'enhance'; }
+            switchTab(tabName) {
+                audio.playClick(); this.activeTab = tabName;
+                document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+                document.querySelectorAll('.tab-btn').forEach(btn => { btn.classList.remove('bg-amber-500', 'text-slate-950'); btn.classList.add('text-slate-400'); });
+                const targetTab = document.getElementById(`tab-${tabName}`); const targetBtn = document.getElementById(`tab-btn-${tabName}`);
+                if (targetTab) targetTab.classList.remove('hidden');
+                if (targetBtn) { targetBtn.classList.add('bg-amber-500', 'text-slate-950'); targetBtn.classList.remove('text-slate-400'); }
+                if (tabName === 'codex') this.renderCodex();
+            }
+            updateItemToggles() {
+                game.toggles.protect = document.getElementById('item-toggle-protect').checked;
+                game.toggles.luck = document.getElementById('item-toggle-luck').checked;
+                game.toggles.discount = document.getElementById('item-toggle-discount').checked;
+                this.updateAll();
+            }
+            updateAll() {
+                document.getElementById('gold-display').innerText = game.gold >= 999999999999 ? '무제한 (MAX)' : game.gold.toLocaleString();
+                document.getElementById('shop-gold-display').innerText = game.gold >= 999999999999 ? '무제한 (MAX)' : game.gold.toLocaleString() + ' G';
+                document.getElementById('header-mode-text').innerText = game.mode === 'easy' ? '이지' : '하드';
+                document.getElementById('header-max-level').innerText = `+${game.maxLevelReached}`;
+
+                const devBadge = document.getElementById('dev-mode-badge');
+                if (game.isDevMode) devBadge.classList.remove('hidden'); else devBadge.classList.add('hidden');
+
+                const sword = game.currentSword; const enhanceBtn = document.getElementById('enhance-btn'); const getSwordBtn = document.getElementById('get-sword-btn');
+                if (sword) {
+                    document.getElementById('canvas-level-badge').innerText = `+${sword.level} ${sword.name}`; document.getElementById('canvas-level-badge').style.backgroundColor = sword.color;
+                    document.getElementById('canvas-rarity-badge').innerText = `${sword.level + 1}/50단계 • ${sword.rarity}`;
+                    document.getElementById('sword-name-title').innerText = `+${sword.level} ${sword.name}`; document.getElementById('sword-name-title').style.color = sword.color;
+                    document.getElementById('sword-desc').innerText = `"${sword.desc}"`; document.getElementById('sword-status-tag').innerText = '보유중';
+                    document.getElementById('sword-status-tag').className = 'text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-bold shrink-0';
+                    document.getElementById('sell-price-display').innerText = sword.sell.toLocaleString() + ' G';
+                    enhanceBtn.classList.remove('hidden'); getSwordBtn.classList.add('hidden');
+                } else {
+                    document.getElementById('canvas-level-badge').innerText = '파괴됨'; document.getElementById('canvas-level-badge').style.backgroundColor = '#ef4444';
+                    document.getElementById('canvas-rarity-badge').innerText = '검이 없습니다.'; document.getElementById('sword-name-title').innerText = '검 파괴됨';
+                    document.getElementById('sword-name-title').style.color = '#ef4444'; document.getElementById('sword-desc').innerText = '강화에 실패하여 검이 파괴되었습니다.';
+                    document.getElementById('sword-status-tag').innerText = '소멸'; document.getElementById('sword-status-tag').className = 'text-[9px] px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold shrink-0';
+                    document.getElementById('sell-price-display').innerText = '0 G'; enhanceBtn.classList.add('hidden'); getSwordBtn.classList.remove('hidden');
+                }
+
+                const sRate = game.getCalculatedSuccessRate(); const bRate = game.getCalculatedBreakRate(); const cost = game.getCalculatedCost();
+                document.getElementById('stat-success-rate').innerText = `${sRate}%`; document.getElementById('stat-break-rate').innerText = `${bRate}%`; document.getElementById('stat-cost').innerText = `${cost.toLocaleString()} G`;
+                
+                const protectEl = document.getElementById('stat-protect-status');
+                if ((game.toggles.protect && game.items.protect > 0) || game.isDevMode) { protectEl.innerText = '적용 중 (보호)'; protectEl.className = 'text-xs font-bold text-cyan-400'; } 
+                else { protectEl.innerText = '미적용'; protectEl.className = 'text-xs font-bold text-slate-500'; }
+
+                document.getElementById('cnt-protect').innerText = game.items.protect; document.getElementById('cnt-luck').innerText = game.items.luck;
+                document.getElementById('cnt-discount').innerText = game.items.discount; document.getElementById('cnt-warp').innerText = game.items.warp;
+                document.getElementById('inv-cnt-protect').innerText = `${game.items.protect}개`; document.getElementById('inv-cnt-luck').innerText = `${game.items.luck}개`;
+                document.getElementById('inv-cnt-discount').innerText = `${game.items.discount}개`; document.getElementById('inv-cnt-warp').innerText = `${game.items.warp}개`;
+
+                const unlockedCount = game.codexUnlocked.filter(Boolean).length;
+                document.getElementById('codex-badge').innerText = `${unlockedCount}/50`;
+
+                const easyBtn = document.getElementById('mode-btn-easy'); const hardBtn = document.getElementById('mode-btn-hard');
+                if (game.mode === 'easy') { easyBtn.className = 'py-2 px-2 rounded-lg border text-center font-bold bg-amber-500/20 border-amber-500 text-amber-400'; hardBtn.className = 'py-2 px-2 rounded-lg border text-center font-bold bg-slate-950 border-slate-800 text-slate-400'; } 
+                else { hardBtn.className = 'py-2 px-2 rounded-lg border text-center font-bold bg-rose-500/20 border-rose-500 text-rose-400'; easyBtn.className = 'py-2 px-2 rounded-lg border text-center font-bold bg-slate-950 border-slate-800 text-slate-400'; }
+
+                document.getElementById('stat-total-attempts').innerText = `${game.stats.totalAttempts}회`; document.getElementById('stat-total-successes').innerText = `${game.stats.totalSuccesses}회`; document.getElementById('stat-total-fails').innerText = `${game.stats.totalFails}회`;
+                document.getElementById('stat-total-breaks').innerText = `${game.stats.totalBreaks}개`; document.getElementById('stat-total-earned').innerText = `${game.stats.totalEarned.toLocaleString()} G`;
+
+                document.getElementById('log-list').innerHTML = game.logs.map(log => {
+                    let c = 'text-slate-400'; if (log.type === 'success') c = 'text-emerald-400 font-bold'; if (log.type === 'fail') c = 'text-amber-400'; if (log.type === 'break') c = 'text-rose-400 font-bold'; if (log.type === 'sell') c = 'text-cyan-400';
+                    return `<div class="${c}"><span class="text-slate-600">[${log.time}]</span> ${log.message}</div>`;
+                }).join('');
+            }
+            renderCodex() {
+                document.getElementById('codex-grid').innerHTML = SWORDS_DATA.map((sword, idx) => {
+                    const unlocked = game.codexUnlocked[idx];
+                    return `
+                        <div onclick="ui.openCodexModal(${idx})" class="p-2 rounded-xl border ${unlocked ? 'bg-slate-900 border-amber-500/40 cursor-pointer hover:border-amber-400' : 'bg-slate-950/60 border-slate-800 opacity-50'} flex flex-col items-center justify-between text-center transition">
+                            <span class="text-[9px] font-bold ${unlocked ? 'text-amber-400' : 'text-slate-600'}">+${sword.level}</span>
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center my-1 text-sm font-black" style="background-color: ${unlocked ? sword.glowColor : '#1e293b'}; color: ${unlocked ? sword.color : '#475569'};"><i class="fa-solid fa-wand-magic"></i></div>
+                            <span class="text-[10px] font-bold text-slate-200 truncate w-full">${unlocked ? sword.name : '?? ?'}</span>
+                        </div>
+                    `;
+                }).join('');
+                const unlockedCount = game.codexUnlocked.filter(Boolean).length; const pct = Math.floor((unlockedCount / 50) * 100);
+                document.getElementById('codex-progress-text').innerText = `${pct}% (${unlockedCount}/50)`; document.getElementById('codex-progress-bar').style.width = `${pct}%`;
+            }
+            openCodexModal(idx) {
+                if (!game.codexUnlocked[idx]) return; audio.playClick(); const sword = SWORDS_DATA[idx];
+                document.getElementById('modal-level').innerText = `+${sword.level} ${sword.rarity}`; document.getElementById('modal-level').style.backgroundColor = sword.color;
+                document.getElementById('modal-title').innerText = sword.name; document.getElementById('modal-title').style.color = sword.color;
+                document.getElementById('modal-desc').innerText = `"${sword.desc}"`; document.getElementById('modal-success').innerText = `${sword.success}%`;
+                document.getElementById('modal-break').innerText = `${sword.break}%`; document.getElementById('modal-cost').innerText = `${sword.cost.toLocaleString()} G`;
+                document.getElementById('modal-sell').innerText = `${sword.sell.toLocaleString()} G`;
+                const modal = document.getElementById('codex-modal'); modal.classList.remove('hidden'); modal.classList.add('flex');
+            }
+            closeModal() { audio.playClick(); const modal = document.getElementById('codex-modal'); modal.classList.add('hidden'); modal.classList.remove('flex'); }
+            openDevModal() {
+                audio.playClick();
+                document.getElementById('dev-code-input').value = '';
+                const modal = document.getElementById('dev-modal');
+                const disableBtn = document.getElementById('dev-disable-btn');
+                if (game.isDevMode) {
+                    disableBtn.classList.remove('hidden');
+                } else {
+                    disableBtn.classList.add('hidden');
+                }
+                modal.classList.remove('hidden'); modal.classList.add('flex');
+            }
+            closeDevModal() { audio.playClick(); const modal = document.getElementById('dev-modal'); modal.classList.add('hidden'); modal.classList.remove('flex'); }
+            showToast(msg, type) {
+                const toast = document.getElementById('enhance-toast'); const content = document.getElementById('toast-content'); content.innerText = msg;
+                if (type === 'success') content.className = 'px-3 py-1.5 rounded-full font-extrabold text-xs sm:text-sm shadow-2xl bg-emerald-500 text-slate-950 border border-emerald-300';
+                else if (type === 'break') content.className = 'px-3 py-1.5 rounded-full font-extrabold text-xs sm:text-sm shadow-2xl bg-rose-600 text-white border border-rose-300 animate-shake';
+                else content.className = 'px-3 py-1.5 rounded-full font-extrabold text-xs sm:text-sm shadow-2xl bg-amber-500 text-slate-950 border border-amber-300';
+                toast.classList.remove('opacity-0', 'translate-y-3'); toast.classList.add('opacity-100', 'translate-y-0');
+                if (this.toastTimeout) clearTimeout(this.toastTimeout);
+                this.toastTimeout = setTimeout(() => { toast.classList.remove('opacity-100', 'translate-y-0'); toast.classList.add('opacity-0', 'translate-y-3'); }, 1600);
+            }
+            triggerShakeAnimation() { const main = document.querySelector('main'); main.classList.remove('animate-shake'); void main.offsetWidth; main.classList.add('animate-shake'); }
+            triggerBounceAnimation() { const main = document.querySelector('main'); main.classList.remove('animate-bounce-short'); void main.offsetWidth; main.classList.add('animate-bounce-short'); }
+        }
+
+        let renderer, game, ui;
+        window.onload = function() {
+            renderer = new CanvasRenderer(); game = new GameEngine(); ui = new UIManager();
+            game.toggleSFX = () => { audio.sfxEnabled = !audio.sfxEnabled; document.getElementById('sfx-icon').className = audio.sfxEnabled ? 'fa-solid fa-volume-high text-amber-400' : 'fa-solid fa-volume-xmark text-slate-500'; ui.showToast(audio.sfxEnabled ? '효과음 켜짐' : '효과음 꺼짐', 'info'); };
+            game.toggleBGM = () => { const state = audio.toggleBGM(); document.getElementById('bgm-icon').className = state ? 'fa-solid fa-music text-amber-400 animate-bounce' : 'fa-solid fa-music text-slate-500'; ui.showToast(state ? 'BGM 켜짐' : 'BGM 꺼짐', 'info'); };
+            game.init();
+        };
+    </script>
+</body>
+</html>
